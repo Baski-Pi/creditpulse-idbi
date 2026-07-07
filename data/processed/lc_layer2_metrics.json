@@ -1,0 +1,66 @@
+{
+  "task": "Default within 12 months (bank's stated question)",
+  "n_test_loans": 283173,
+  "base_rate_12m": 0.052,
+  "auc_12m": 0.7229,
+  "headline_accuracy": 0.948,
+  "accuracy_threshold": 0.58,
+  "naive_all_good_accuracy": 0.948,
+  "watchlist_top15pct": {
+    "default_recall": 0.37,
+    "default_precision": 0.1281,
+    "lift_vs_random": 2.47
+  },
+  "calibration_by_decile": {
+    "0": {
+      "pred_pd12": 0.0078,
+      "obs_pd12": 0.0072,
+      "n": 28318
+    },
+    "1": {
+      "pred_pd12": 0.0133,
+      "obs_pd12": 0.0125,
+      "n": 28317
+    },
+    "2": {
+      "pred_pd12": 0.0186,
+      "obs_pd12": 0.0205,
+      "n": 28317
+    },
+    "3": {
+      "pred_pd12": 0.0243,
+      "obs_pd12": 0.0267,
+      "n": 28317
+    },
+    "4": {
+      "pred_pd12": 0.0311,
+      "obs_pd12": 0.0368,
+      "n": 28318
+    },
+    "5": {
+      "pred_pd12": 0.0395,
+      "obs_pd12": 0.0469,
+      "n": 28317
+    },
+    "6": {
+      "pred_pd12": 0.0505,
+      "obs_pd12": 0.0582,
+      "n": 28317
+    },
+    "7": {
+      "pred_pd12": 0.0653,
+      "obs_pd12": 0.073,
+      "n": 28317
+    },
+    "8": {
+      "pred_pd12": 0.087,
+      "obs_pd12": 0.0955,
+      "n": 28317
+    },
+    "9": {
+      "pred_pd12": 0.1456,
+      "obs_pd12": 0.1423,
+      "n": 28318
+    }
+  }
+}

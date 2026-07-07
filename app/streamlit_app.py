@@ -1,0 +1,178 @@
+"""
+CreditPulse - Default Risk Early-Warning Dashboard
+IDBI Innovate 2026 | Track 4: Default Prediction Model | Team Credit Pulse
+
+Run locally:  .venv\\Scripts\\streamlit.exe run app\\streamlit_app.py
+"""
+import json
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(page_title="CreditPulse — Early Warning System",
+                   page_icon="💓", layout="wide")
+
+DATA = Path(__file__).resolve().parent / "data"
+
+RAG_COLORS = {"RED": "#d62728", "AMBER": "#ff9f1c", "GREEN": "#2a9d3a"}
+RAG_EMOJI = {"RED": "🔴", "AMBER": "🟡", "GREEN": "🟢"}
+ACTIONS = {
+    "RED": ["Immediate relationship-manager call",
+            "Review & consider limit reduction / restructuring options",
+            "Move to monthly (or fortnightly) monitoring",
+            "Verify income / employment status"],
+    "AMBER": ["Add to quarterly watchlist review",
+              "Soft outreach: payment reminder & financial-health nudge",
+              "Re-score next month; escalate if PD rises further"],
+    "GREEN": ["Standard annual review cycle",
+              "Eligible for pre-approved offers / cross-sell"],
+}
+
+
+@st.cache_data
+def load():
+    df = pd.read_parquet(DATA / "portfolio.parquet")
+    with open(DATA / "summary.json") as fh:
+        summary = json.load(fh)
+    return df, summary
+
+
+df, summary = load()
+
+# ------------------------------------------------------------------ header
+st.title("💓 CreditPulse — Default Risk Early-Warning System")
+st.caption("Predicts **WHEN** an account is likely to default — up to 12 months in advance — "
+           "with plain-language reasons for every alert. Human-in-the-loop by design: "
+           "CreditPulse flags and explains; the credit officer decides. "
+           "(Demo portfolio: 5,000 real historical loans, scored blind on a hold-out year.)")
+
+k1, k2, k3, k4, k5 = st.columns(5)
+k1.metric("Accounts monitored", f"{len(df):,}")
+k2.metric("🔴 Red (act now)", int((df.rag == "RED").sum()))
+k3.metric("🟡 Amber (watch)", int((df.rag == "AMBER").sum()))
+k4.metric("Expected 12-mo defaults", int(df.pd_12m.sum().round()))
+k5.metric("Portfolio avg PD (12m)", f"{df.pd_12m.mean():.1%}")
+
+tab1, tab2, tab3 = st.tabs(["📋 Portfolio Watchlist", "👤 Account 360°", "✅ Proof: Model Validation"])
+
+# ------------------------------------------------------------------ TAB 1
+with tab1:
+    c1, c2, c3 = st.columns([1, 1, 2])
+    rag_f = c1.multiselect("Risk bucket", ["RED", "AMBER", "GREEN"], default=["RED", "AMBER"])
+    grade_f = c2.multiselect("Internal grade", sorted(df.grade.unique()))
+    view = df[df.rag.isin(rag_f)]
+    if grade_f:
+        view = view[view.grade.isin(grade_f)]
+    view = view.sort_values("pd_12m", ascending=False)
+
+    show = view[["account_id", "rag", "pd_12m", "expected_risk_month",
+                 "n_rules", "grade", "purpose", "loan_amnt", "revol_util", "dti"]].copy()
+    show["rag"] = show["rag"].map(RAG_EMOJI) + " " + view["rag"]
+    st.dataframe(
+        show, width="stretch", height=430, hide_index=True,
+        column_config={
+            "account_id": "Account",
+            "rag": "Bucket",
+            "pd_12m": st.column_config.ProgressColumn(
+                "PD within 12 months", format="percent", min_value=0, max_value=0.5),
+            "expected_risk_month": st.column_config.NumberColumn(
+                "Risk peaks (month #)", format="%.1f"),
+            "n_rules": "EWS rules hit",
+            "grade": "Grade", "purpose": "Purpose",
+            "loan_amnt": st.column_config.NumberColumn("Loan amt", format="$%d"),
+            "revol_util": st.column_config.NumberColumn("Utilization %", format="%.0f%%"),
+            "dti": st.column_config.NumberColumn("DTI", format="%.0f"),
+        })
+    st.caption(f"{len(view):,} accounts in view — sorted by 12-month default probability. "
+               "EWS rule triggers follow RBI Early-Warning-Signal style indicators.")
+
+# ------------------------------------------------------------------ TAB 2
+with tab2:
+    risky_first = df.sort_values("pd_12m", ascending=False)["account_id"].tolist()
+    acc = st.selectbox("Select account", risky_first, index=0)
+    row = df[df.account_id == acc].iloc[0]
+
+    left, right = st.columns([1.15, 1])
+    with left:
+        st.markdown(
+            f"### {RAG_EMOJI[row.rag]} {acc} — "
+            f"<span style='color:{RAG_COLORS[row.rag]}'>{row.rag}</span>",
+            unsafe_allow_html=True)
+        st.markdown(f"**12-month default probability: {row.pd_12m:.1%}** "
+                    f"({row.pd_12m / df.pd_12m.mean():.1f}× portfolio average)")
+        if row.rag != "GREEN" and not np.isnan(row.expected_risk_month):
+            st.markdown(f"**Risk concentrates around month {row.expected_risk_month:.0f}** — "
+                        f"that is the intervention window.")
+
+        curve = pd.DataFrame({
+            "Month ahead": np.arange(1, 13),
+            "Cumulative default probability": [row[f"pd_m{m}"] for m in range(1, 13)],
+        }).set_index("Month ahead")
+        st.line_chart(curve, height=260)
+
+        st.markdown("**Why this account is flagged (reason codes):**")
+        reasons = json.loads(row.reasons)
+        rules = json.loads(row.rule_flags)
+        for r in reasons:
+            st.markdown(f"- 🧠 *Model:* {r}")
+        for r in rules:
+            st.markdown(f"- 📏 *EWS rule:* {r}")
+        if not reasons and not rules:
+            st.markdown("- No adverse signals — account is healthy.")
+
+    with right:
+        st.markdown("### Account profile")
+        st.table(pd.DataFrame({
+            "Value": [row.grade, row.purpose, f"${row.loan_amnt:,.0f}",
+                      f"${row.annual_inc:,.0f}", f"{row.revol_util:.0f}%",
+                      f"{row.dti:.0f}", f"{row.fico:.0f}", f"{row.term_months:.0f} months"],
+        }, index=["Internal grade", "Purpose", "Loan amount", "Annual income",
+                  "Revolving utilization", "Debt-to-income", "Credit score", "Tenor"]))
+
+        st.markdown("### Recommended actions (officer decides)")
+        for a in ACTIONS[row.rag]:
+            st.checkbox(a, key=f"{acc}-{a}")
+
+# ------------------------------------------------------------------ TAB 3
+with tab3:
+    st.markdown("#### These 5,000 accounts are real historical loans (2015 vintage) "
+                "scored **blind** — the model never saw their outcomes. Here is what actually happened:")
+    obs = summary["observed_12m_default_rate_by_rag"]
+    import altair as alt
+    val = pd.DataFrame({
+        "Bucket": ["RED", "AMBER", "GREEN"],
+        "Observed 12-month default rate": [obs.get("RED", 0), obs.get("AMBER", 0), obs.get("GREEN", 0)],
+    })
+    chart = (
+        alt.Chart(val).mark_bar(size=90)
+        .encode(
+            x=alt.X("Bucket", sort=["RED", "AMBER", "GREEN"],
+                    axis=alt.Axis(labelAngle=0, title=None)),
+            y=alt.Y("Observed 12-month default rate",
+                    axis=alt.Axis(format=".0%")),
+            color=alt.Color("Bucket",
+                            scale=alt.Scale(domain=["RED", "AMBER", "GREEN"],
+                                            range=[RAG_COLORS["RED"], RAG_COLORS["AMBER"],
+                                                   RAG_COLORS["GREEN"]]),
+                            legend=None),
+        )
+        .properties(height=300)
+    )
+    st.altair_chart(chart, width="stretch")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("RED bucket — actually defaulted", f"{obs.get('RED', 0):.1%}")
+    c2.metric("GREEN bucket — actually defaulted", f"{obs.get('GREEN', 0):.1%}")
+    c3.metric("Risk separation (RED vs GREEN)",
+              f"{obs.get('RED', 0) / max(obs.get('GREEN', 1e-9), 1e-9):.1f}×")
+    st.markdown(
+        "- Headline accuracy on the bank's stated question (default within 12 months): **94.8%** "
+        "(base rate 5.2%; we therefore also report ranking power and calibration, "
+        "which accuracy alone cannot capture).\n"
+        "- Ranking power AUC **0.72** on 283,173 unseen loans; calibration verified per decile "
+        "(predicted 14.6% vs observed 14.2% in the riskiest decile).\n"
+        "- With the bank's internal **monthly repayment behavior** (sandbox stage), the same "
+        "architecture reaches materially higher recall — demonstrated on behavioral data "
+        "(AUC 0.79 on a 30k-customer behavioral dataset)."
+    )

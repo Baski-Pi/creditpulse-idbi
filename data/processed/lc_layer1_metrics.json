@@ -1,0 +1,20 @@
+{
+  "cohort": "LC 2010-2015, fully-observable terms",
+  "n_train": 385009,
+  "n_test": 283173,
+  "default_rate_test": 0.1488,
+  "auc": 0.7031,
+  "ks": 0.2954,
+  "headline_accuracy": 0.8513,
+  "accuracy_threshold": 0.48,
+  "watchlist_top20pct": {
+    "default_recall": 0.3963,
+    "default_precision": 0.2948
+  },
+  "per_vintage_auc": {
+    "2015Q1": 0.6949,
+    "2015Q2": 0.7,
+    "2015Q3": 0.7081,
+    "2015Q4": 0.7068
+  }
+}

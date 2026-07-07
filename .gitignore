@@ -1,0 +1,20 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+
+# large raw data - never commit (Kaggle license + size)
+data/raw/
+data/processed/*.parquet
+data/processed/*.npy
+
+# keep small artifacts
+!app/data/portfolio.parquet
+
+# local/OS noise
+Thumbs.db
+desktop.ini
+*.log
+
+# PPT working files (submit as PDF via portal, keep template out of repo)
+docs/*.pptx

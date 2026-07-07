@@ -1,0 +1,15 @@
+{
+  "n_accounts": 5000,
+  "rag_counts": {
+    "GREEN": 3521,
+    "AMBER": 1035,
+    "RED": 444
+  },
+  "observed_12m_default_rate_by_rag": {
+    "AMBER": 0.0773,
+    "GREEN": 0.0332,
+    "RED": 0.1104
+  },
+  "red_threshold_pd12": 0.119,
+  "amber_threshold_pd12": 0.0743
+}
