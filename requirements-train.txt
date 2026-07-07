@@ -1,0 +1,17 @@
+# Full local training/research environment:
+#   .venv\Scripts\python.exe -m pip install -r requirements-train.txt
+pandas==3.0.3
+numpy
+lightgbm==4.6.0
+scikit-learn==1.9.0
+shap==0.51.0
+matplotlib
+pyarrow
+xlrd
+openpyxl
+streamlit
+lifelines
+kaggle
+python-pptx
+pillow
+altair

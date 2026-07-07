@@ -54,12 +54,13 @@ docs/                   <- research notes & requirement spec
 ## Run locally
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt          # dashboard only
 streamlit run app/streamlit_app.py
 ```
 
-To retrain from scratch: download the Kaggle datasets listed in
-`docs/research_1_datasets.md` into `data/raw/`, then run the `src/` scripts in order.
+To retrain from scratch: `pip install -r requirements-train.txt`, download the
+Kaggle datasets listed in `docs/research_1_datasets.md` into `data/raw/`, then
+run the `src/` scripts in order.
 
 ## Data
 

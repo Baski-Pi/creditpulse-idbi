@@ -1,12 +1,7 @@
-pandas==3.0.3
-numpy
-lightgbm==4.6.0
-scikit-learn==1.9.0
-shap==0.51.0
-matplotlib
-pyarrow
-xlrd
-openpyxl
+# Dashboard runtime — this is what Streamlit Cloud installs to serve the app.
+# Full training environment lives in requirements-train.txt
 streamlit
-lifelines
-kaggle
+pandas
+numpy
+pyarrow
+altair
