@@ -9,7 +9,7 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 
 BASE = Path(__file__).resolve().parents[1]
-DOCS = BASE / "docs"
+DOCS = BASE / "docs-"
 TEMPLATE = DOCS / "Prototype Submission Deck _ IDBI Innovate.pptx"
 OUT = DOCS / "CreditPulse_Track4.pptx"
 
@@ -61,7 +61,7 @@ S = prs.slides
 # ---- Slide 1: Team details
 add_bullets(S[0], [
     ("Team name:  Credit Pulse", 0, True),
-    ("Team leader:  [YOUR NAME - exactly as registered on the portal]", 0, True),
+    ("Team leader:  Baskar B  (baskarbssb@gmail.com)", 0, True),
     ("Problem statement:  Track 4 - Default Prediction Model", 0, True),
     ("", 0, False),
     ("CreditPulse - knows WHEN, explains WHY, lets the officer decide.", 0, False),
@@ -169,7 +169,7 @@ add_bullets(S[11], [
 add_bullets(S[12], [
     ("GitHub repository:  https://github.com/Baski-Pi/creditpulse-idbi", 0, True),
     ("Demo video (3 min):  [ADD YOUTUBE LINK AFTER RECORDING]", 0, True),
-    ("Live product:  [ADD STREAMLIT CLOUD URL AFTER DEPLOY]", 0, True),
+    ("Live product:  https://creditpulse-idbi.streamlit.app", 0, True),
 ], top=2.2, size=18)
 
 prs.save(str(OUT))

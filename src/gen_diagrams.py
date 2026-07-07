@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 BASE = Path(__file__).resolve().parents[1]
-OUT = BASE / "docs"
+OUT = BASE / "docs-"
 
 INK = "#1f2937"
 BLUE = "#1d4ed8"
