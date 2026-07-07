@@ -67,7 +67,7 @@ with tab1:
         view = view[view.grade.isin(grade_f)]
     view = view.sort_values("pd_12m", ascending=False)
 
-    show = view[["account_id", "rag", "pd_12m", "expected_risk_month",
+    show = view[["account_id", "rag", "pd_12m", "pd_6m",
                  "n_rules", "grade", "purpose", "loan_amnt", "revol_util", "dti"]].copy()
     show["rag"] = show["rag"].map(RAG_EMOJI) + " " + view["rag"]
     st.dataframe(
@@ -77,8 +77,8 @@ with tab1:
             "rag": "Bucket",
             "pd_12m": st.column_config.ProgressColumn(
                 "PD within 12 months", format="percent", min_value=0, max_value=0.5),
-            "expected_risk_month": st.column_config.NumberColumn(
-                "Risk peaks (month #)", format="%.1f"),
+            "pd_6m": st.column_config.ProgressColumn(
+                "PD within 6 months", format="percent", min_value=0, max_value=0.5),
             "n_rules": "EWS rules hit",
             "grade": "Grade", "purpose": "Purpose",
             "loan_amnt": st.column_config.NumberColumn("Loan amt", format="$%d"),
@@ -102,9 +102,8 @@ with tab2:
             unsafe_allow_html=True)
         st.markdown(f"**12-month default probability: {row.pd_12m:.1%}** "
                     f"({row.pd_12m / df.pd_12m.mean():.1f}× portfolio average)")
-        if row.rag != "GREEN" and not np.isnan(row.expected_risk_month):
-            st.markdown(f"**Risk concentrates around month {row.expected_risk_month:.0f}** — "
-                        f"that is the intervention window.")
+        st.markdown(f"**Risk trajectory: {row.pd_6m:.1%} by month 6 → {row.pd_12m:.1%} "
+                    f"by month 12** — the gap between those numbers is the intervention window.")
 
         curve = pd.DataFrame({
             "Month ahead": np.arange(1, 13),
@@ -167,12 +166,18 @@ with tab3:
     c3.metric("Risk separation (RED vs GREEN)",
               f"{obs.get('RED', 0) / max(obs.get('GREEN', 1e-9), 1e-9):.1f}×")
     st.markdown(
-        "- Headline accuracy on the bank's stated question (default within 12 months): **94.8%** "
-        "(base rate 5.2%; we therefore also report ranking power and calibration, "
-        "which accuracy alone cannot capture).\n"
-        "- Ranking power AUC **0.72** on 283,173 unseen loans; calibration verified per decile "
-        "(predicted 14.6% vs observed 14.2% in the riskiest decile).\n"
-        "- With the bank's internal **monthly repayment behavior** (sandbox stage), the same "
-        "architecture reaches materially higher recall — demonstrated on behavioral data "
-        "(AUC 0.79 on a 30k-customer behavioral dataset)."
+        "- 'Default' here means the account **stops repaying** (and is subsequently charged "
+        "off) — the earliest actionable signal; formal charge-off is recorded months later.\n"
+        "- Headline accuracy on the bank's stated question (stops repaying within 12 months): "
+        "**94.8%** (base rate 5.2%; a do-nothing model scores the same, which is why we lead "
+        "with ranking power and calibration below).\n"
+        "- Ranking power **AUC 0.72, KS 0.33** on 283,173 unseen loans; riskiest decile "
+        "predicted 14.6% vs observed 14.2% (full decile table in the deck appendix).\n"
+        "- RED + AMBER (~30% of the book) captures **52% of all 12-month defaults at 2.5× "
+        "lift** — bucket sizes are a capacity dial the bank sets, not a model ceiling.\n"
+        "- Validation cohort: 36-month personal loans (the fully-observable segment of the "
+        "public data); the architecture itself is term-agnostic.\n"
+        "- With the bank's internal **monthly repayment behavior** (sandbox stage), ranking "
+        "power improves materially — shown directionally on a 30k-customer behavioral "
+        "dataset; IDBI's own data connects via the sandbox APIs."
     )

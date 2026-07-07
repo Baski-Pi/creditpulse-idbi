@@ -2,10 +2,10 @@
   "dataset": "UCI Taiwan credit default (30k, 22.1% default rate)",
   "cv": "5-fold stratified, out-of-fold metrics",
   "auc": 0.7861,
-  "ks": 0.43,
-  "accuracy_at_best_threshold": 0.8217,
-  "threshold": 0.51,
-  "default_recall": 0.3556,
-  "default_precision": 0.6874,
+  "ks": 0.4288,
+  "accuracy_at_best_threshold": 0.8208,
+  "threshold": 0.53,
+  "default_recall": 0.3424,
+  "default_precision": 0.6918,
   "baseline_accuracy_predict_all_good": 0.7788
 }

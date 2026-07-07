@@ -25,15 +25,27 @@ Every flagged account carries **reason codes** (from SHAP contributions mapped t
 plain language) — aligned with RBI model-governance expectations and the bank's
 human-in-the-loop requirement.
 
-## Validated results (strict out-of-time test: train ≤2014, score 2015 — 283,173 unseen loans)
+## Validated results (out-of-time test: train ≤2014, score 2015 — 283,173 unseen loans)
 
-- **Headline accuracy 94.8%** on the bank's stated question (default within 12 months)
-- **Calibration that holds**: riskiest decile predicted 14.6% vs observed 14.2%
+- "Default" is measured as **payment cessation** (the account stops repaying and is
+  subsequently charged off) — the earliest actionable event; formal charge-off is
+  recorded ~4–6 months later
+- **Headline accuracy 94.8%** on the bank's stated question (stops repaying within
+  12 months; base rate 5.2%, so we lead with ranking and calibration below)
+- **Ranking power AUC 0.72, KS 0.33** on the 12-month task
+- **Calibration**: riskiest decile predicted 14.6% vs observed 14.2%; portfolio-level
+  expected defaults 239 predicted vs 246 actual (full decile table in the deck appendix)
 - **RAG buckets proven on blind history**: RED accounts defaulted at **11.0%** vs
-  GREEN **3.3%** (3.3× separation) within 12 months
-- Median time-to-default in the data is 14 months → a 12-month warning is actionable
-- On monthly behavioral data (30k-customer dataset) the same pipeline reaches AUC 0.79 —
-  the expected uplift when connected to the bank's internal repayment behavior in the sandbox
+  GREEN **3.3%** (3.3× separation); RED+AMBER (~30% of book) captures 52% of all
+  12-month defaults at 2.5× lift — bucket sizes are a capacity dial
+- Median time from disbursal to payment cessation is 14 months → a 12-month warning
+  is actionable
+- Validation cohort: **36-month personal loans** (the fully-observable segment of the
+  public data); the architecture is term-agnostic and would be retrained per segment
+  on bank data
+- On monthly behavioral data (30k-customer dataset) the same pipeline reaches AUC 0.79
+  vs 0.72 here — directional evidence that connecting the bank's internal repayment
+  behavior (sandbox stage) materially improves ranking power
 
 ## Repository layout
 
@@ -59,8 +71,9 @@ streamlit run app/streamlit_app.py
 ```
 
 To retrain from scratch: `pip install -r requirements-train.txt`, download the
-Kaggle datasets listed in `docs/research_1_datasets.md` into `data/raw/`, then
-run the `src/` scripts in order.
+Kaggle datasets `wordsforthewise/lending-club` (accepted loans file) and the UCI
+"default of credit card clients" dataset into `data/raw/`, then run the `src/`
+scripts in order (each script's docstring documents its stage).
 
 ## Data
 

@@ -109,6 +109,13 @@ y12 = ((test["event"] == 1) & (test["duration_months"] <= 12)).astype(int).value
 score12 = pd_at[12]
 
 auc12 = roc_auc_score(y12, score12)
+
+# KS on the SAME 12-month task (max separation of score distributions)
+order = np.argsort(-score12)
+ys12 = y12[order]
+ks12 = float(np.max(np.cumsum(ys12) / ys12.sum()
+                    - np.cumsum(1 - ys12) / (len(ys12) - ys12.sum())))
+
 ths = np.linspace(0.02, 0.6, 117)
 accs = [accuracy_score(y12, score12 >= t) for t in ths]
 t_best = float(ths[int(np.argmax(accs))])
@@ -130,6 +137,7 @@ metrics = {
     "n_test_loans": int(n_test),
     "base_rate_12m": round(float(y12.mean()), 4),
     "auc_12m": round(float(auc12), 4),
+    "ks_12m": round(ks12, 4),
     "headline_accuracy": round(float(np.max(accs)), 4),
     "accuracy_threshold": t_best,
     "naive_all_good_accuracy": round(float(1 - y12.mean()), 4),

@@ -145,15 +145,16 @@ for i, (img, cap) in enumerate([(DOCS / "1.png", ""), (DOCS / "2.png", ""), (DOC
 
 # ---- Slide 11: Performance
 add_bullets(S[10], [
-    ("Test protocol: strict out-of-time validation - trained on loans issued up to 2014, scored the entire unseen 2015 book (283,173 loans).", 0, True),
-    ("Headline accuracy 94.8% on the bank's stated question, 'will this account default within 12 months?' (requirement: >90%).", 0, True),
-    ("We also report the metrics a risk team expects - because accuracy alone can be gamed on imbalanced books:", 0, False),
-    ("Ranking power AUC 0.72 from origination data alone; 0.79 when monthly repayment behavior is available (30k-customer behavioral dataset) - the expected uplift once connected to IDBI's internal data in the sandbox", 1, False),
-    ("Calibration verified per decile: riskiest decile predicted 14.6% vs observed 14.2%", 1, False),
-    ("KS statistic 0.30; AUC stable across all four quarters of the test year (production-readiness)", 1, False),
-    ("RAG buckets validated blind: RED defaulted 11.0% / AMBER 7.7% / GREEN 3.3% within 12 months (3.3x separation)", 0, True),
-    ("Median observed time-to-default is 14 months - a 12-month advance warning is genuinely actionable.", 0, False),
-], size=14)
+    ("Test protocol: out-of-time validation - trained on loans issued up to 2014, scored the unseen 2015 cohort: 283,173 loans (36-month personal loans, the fully-observable segment; architecture is term-agnostic).", 0, True),
+    ("'Default' is measured as payment cessation - the account stops repaying and is subsequently charged off. It is the earliest actionable event; formal charge-off follows months later.", 0, False),
+    ("Headline accuracy 94.8% on the bank's stated question, 'will this account stop repaying within 12 months?' (requirement: >90%; base rate 5.2%, so we lead with ranking power and calibration below).", 0, True),
+    ("Ranking power AUC 0.72, KS 0.33 on the 12-month task, from origination data alone; behavioral repayment data improves this materially (shown directionally on a 30k-customer behavioral dataset, AUC 0.79) - IDBI's internal data connects in the sandbox", 1, False),
+    ("Calibration: riskiest decile predicted 14.6% vs observed 14.2%; portfolio-level 239 expected defaults vs 246 actual (full decile table in Appendix B)", 1, False),
+    ("AUC stable across all four quarters of the test year (production-readiness)", 1, False),
+    ("RAG buckets validated blind: RED defaulted 11.0% / AMBER 7.7% / GREEN 3.3% (3.3x separation). RED+AMBER (~30% of book) captures 52% of all 12-month defaults at 2.5x lift - bucket sizes are a capacity dial the bank sets.", 0, True),
+    ("Median time from disbursal to payment cessation is 14 months - a 12-month advance warning is genuinely actionable.", 0, False),
+    ("Fair-lending by design: protected attributes (gender, marital status) are excluded from all models.", 0, False),
+], size=13)
 
 # ---- Slide 12: Future development
 add_bullets(S[11], [
@@ -171,6 +172,37 @@ add_bullets(S[12], [
     ("Demo video (3 min):  [ADD YOUTUBE LINK AFTER RECORDING]", 0, True),
     ("Live product:  https://creditpulse-idbi.streamlit.app", 0, True),
 ], top=2.2, size=18)
+
+# ---- Slide 14: Appendix A - data pillar mapping
+add_bullets(S[13], [
+    ("Appendix A - Three data pillars: prototype proxy vs sandbox/production source", 0, True),
+    ("Pillar 1 - Borrower behavior", 0, True),
+    ("Prototype: repayment-status history, utilization trajectory & payment-coverage aggregates (30k-customer behavioral dataset); utilization & delinquency fields (2.26M loans)", 1, False),
+    ("Sandbox/production: CBS transaction history, EMI payment records, UPI patterns, limit-utilization refresh", 1, False),
+    ("Pillar 2 - Internal bank database", 0, True),
+    ("Prototype: loan terms, income, vintage, internal grade, credit-history length (loan-level public data as stand-in)", 1, False),
+    ("Sandbox/production: IDBI loan master, internal ratings, account relationships, collateral data", 1, False),
+    ("Pillar 3 - Public-domain data", 0, True),
+    ("Prototype: regional factor only; feature slots defined in the pipeline", 1, False),
+    ("Sandbox/production: RBI sectoral GNPA & macro series, industry stress indicators, bureau enquiry trends", 1, False),
+    ("Honest status: Pillar 3 is architecture-ready but not yet data-backed in the prototype - it is our first sandbox integration target.", 0, True),
+], size=13)
+
+# ---- Slide 15: Appendix B - full calibration table
+add_bullets(S[14], [
+    ("Appendix B - Full calibration by risk decile (2015 hold-out, 283,173 loans)", 0, True),
+    ("Decile 1 (safest):  predicted 0.8%   observed 0.7%", 1, False),
+    ("Decile 2:  predicted 1.3%   observed 1.3%", 1, False),
+    ("Decile 3:  predicted 1.9%   observed 2.1%", 1, False),
+    ("Decile 4:  predicted 2.4%   observed 2.7%", 1, False),
+    ("Decile 5:  predicted 3.1%   observed 3.7%", 1, False),
+    ("Decile 6:  predicted 4.0%   observed 4.7%", 1, False),
+    ("Decile 7:  predicted 5.1%   observed 5.8%", 1, False),
+    ("Decile 8:  predicted 6.5%   observed 7.3%", 1, False),
+    ("Decile 9:  predicted 8.7%   observed 9.6%", 1, False),
+    ("Decile 10 (riskiest):  predicted 14.6%   observed 14.2%", 1, True),
+    ("Read: mid-book deciles underpredict modestly (10-20% relative) - a known conservatism we would recalibrate on bank data; the riskiest decile, where decisions concentrate, is near-exact, and the portfolio total is 239 predicted vs 246 actual.", 0, False),
+], size=13)
 
 prs.save(str(OUT))
 print("Saved:", OUT)

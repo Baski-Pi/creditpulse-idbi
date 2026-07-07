@@ -61,9 +61,18 @@ params = dict(
     random_state=42,
     verbose=-1,
 )
-model = lgb.LGBMClassifier(**params)
-model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], eval_metric="auc",
+# Early stopping must never see the 2015 test set. Tune the tree count on a
+# 2014 validation slice (still time-ordered), then refit on all of 2010-2014.
+fit_m = cohort["issue_year"] <= 2013
+val_m = cohort["issue_year"] == 2014
+tuner = lgb.LGBMClassifier(**params)
+tuner.fit(X[fit_m], y[fit_m], eval_set=[(X[val_m], y[val_m])],
+          eval_metric="auc",
           callbacks=[lgb.early_stopping(100, verbose=False)])
+best_trees = tuner.best_iteration_ or params["n_estimators"]
+print(f"Early stopping on 2014 slice chose {best_trees} trees")
+model = lgb.LGBMClassifier(**{**params, "n_estimators": best_trees})
+model.fit(X_tr, y_tr)
 
 score = model.predict_proba(X_te)[:, 1]
 
@@ -95,8 +104,6 @@ metrics = {
     },
     "per_vintage_auc": {},
 }
-for yr, g in cohort[~train_m].groupby(cohort.loc[~train_m, "issue_d"].dt.quarter):
-    pass  # per-quarter granularity below via test issue quarters
 test_q = cohort.loc[~train_m, "issue_d"].dt.to_period("Q").astype(str)
 for q in sorted(test_q.unique()):
     m = test_q == q

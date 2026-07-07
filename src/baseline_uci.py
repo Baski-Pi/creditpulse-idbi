@@ -70,10 +70,11 @@ f["delay_months"] = (pay > 0).sum(axis=1)                  # how many months del
 f["delay_trend"] = pay["PAY_1"] - pay.mean(axis=1)         # worsening vs own average
 
 # -- Scale / demographics / segment
+# Protected attributes (SEX, MARRIAGE) are deliberately EXCLUDED - fair-lending
+# hygiene: gender/marital status must not drive credit decisions.
 f["limit_bal"] = df["LIMIT_BAL"]
 f["age"] = df["AGE"]
-for c in ["SEX", "EDUCATION", "MARRIAGE"]:
-    f[c] = df[c].astype("category")
+f["EDUCATION"] = df["EDUCATION"].astype("category")
 
 y = df["target"]
 

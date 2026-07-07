@@ -3,6 +3,7 @@
   "n_test_loans": 283173,
   "base_rate_12m": 0.052,
   "auc_12m": 0.7229,
+  "ks_12m": 0.3299,
   "headline_accuracy": 0.948,
   "accuracy_threshold": 0.58,
   "naive_all_good_accuracy": 0.948,
