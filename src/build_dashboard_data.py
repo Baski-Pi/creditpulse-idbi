@@ -48,22 +48,26 @@ sample = test.sample(n=N_PORTFOLIO, random_state=SEED).reset_index(drop=True)
 booster = lgb.Booster(model_file=str(MODELS / "lc_layer2_hazard.txt"))
 feat_order = FEATS + ["month_on_book"]
 
-# ----------------------------------------------------- PD curve months 1..12
-surv = np.ones(len(sample))
-curve = np.zeros((len(sample), 12))
-for m in range(1, 13):
+# ------------------------------------- hazards for months 1..18 on book
+# Months 1..12 give the at-disbursal PD curve. Months 7..18 give the
+# RUNNING-ACCOUNT view: risk over the next 12 months for an account that
+# has already survived 6 months on book (hazard chain conditioned on survival).
+H = 18
+hazards = np.zeros((len(sample), H))
+for m in range(1, H + 1):
     rows = sample[FEATS].copy()
     rows["month_on_book"] = m
-    h = booster.predict(rows[feat_order])
-    surv = surv * (1 - h)
-    curve[:, m - 1] = 1 - surv
+    hazards[:, m - 1] = booster.predict(rows[feat_order])
 
+# at-disbursal cumulative PD, months 1..12
+surv = np.cumprod(1 - hazards[:, :12], axis=1)
+curve = 1 - surv
 pd12 = curve[:, 11]
 
-# expected timing: probability-weighted average default month (given default by 12m)
-inc = np.diff(np.concatenate([np.zeros((len(sample), 1)), curve], axis=1), axis=1)
-with np.errstate(invalid="ignore", divide="ignore"):
-    exp_month = np.where(pd12 > 0, (inc * np.arange(1, 13)).sum(axis=1) / pd12, np.nan)
+# month-6 conditional cumulative PD over the NEXT 12 months (book months 7..18)
+surv6 = np.cumprod(1 - hazards[:, 6:18], axis=1)
+curve6 = 1 - surv6
+pd12_m6 = curve6[:, 11]
 
 # ----------------------------------------------------- rule triggers (EWS layer)
 rules = pd.DataFrame(index=sample.index)
@@ -80,6 +84,15 @@ red_thr = float(np.quantile(pd12, 0.93))     # ~top 7% by model
 amber_thr = float(np.quantile(pd12, 0.80))   # next ~13%
 rag = np.where((pd12 >= red_thr) | ((pd12 >= amber_thr) & (rule_count >= 2)), "RED",
       np.where((pd12 >= amber_thr) | (rule_count >= 2), "AMBER", "GREEN"))
+
+# month-6 view: only accounts still paying at month 6 remain on the book
+on_book_m6 = (sample["duration_months"] > 6).values
+p6 = pd12_m6[on_book_m6]
+red6 = float(np.quantile(p6, 0.93))
+amber6 = float(np.quantile(p6, 0.80))
+rag_m6 = np.where((pd12_m6 >= red6) | ((pd12_m6 >= amber6) & (rule_count >= 2)), "RED",
+         np.where((pd12_m6 >= amber6) | (rule_count >= 2), "AMBER", "GREEN"))
+rag_m6 = np.where(on_book_m6, rag_m6, "OFF_BOOK")
 
 # ----------------------------------------------------- reason codes via SHAP
 REASON = {
@@ -149,7 +162,8 @@ out = pd.DataFrame({
     "pd_3m": curve[:, 2].round(4),
     "pd_6m": curve[:, 5].round(4),
     "pd_9m": curve[:, 8].round(4),
-    "expected_risk_month": np.round(exp_month, 1),
+    "rag_m6": rag_m6,
+    "on_book_m6": on_book_m6.astype(int),
     "rule_flags": [json.dumps(r) for r in rule_list],
     "n_rules": rule_count.values,
     "reasons": [json.dumps(r) for r in reasons],
@@ -165,13 +179,19 @@ out = pd.DataFrame({
     # ground truth for the validation view
     "actual_default_12m": ((sample["event"] == 1)
                            & (sample["duration_months"] <= 12)).astype(int).values,
+    # month-6 view outcome: stopped paying in book months 7..18
+    "actual_default_12m_m6": ((sample["event"] == 1)
+                              & (sample["duration_months"] > 6)
+                              & (sample["duration_months"] <= 18)).astype(int).values,
     "actual_default_ever": sample["event"].values,
 })
 for m in range(1, 13):
     out[f"pd_m{m}"] = curve[:, m - 1].round(4)
+    out[f"pd6_m{m}"] = curve6[:, m - 1].round(4)
 
 out.to_parquet(APPDATA / "portfolio.parquet", index=False)
 
+m6 = out[out["on_book_m6"] == 1]
 summary = {
     "n_accounts": len(out),
     "rag_counts": out["rag"].value_counts().to_dict(),
@@ -179,6 +199,12 @@ summary = {
                                             .mean().round(4).to_dict(),
     "red_threshold_pd12": round(red_thr, 4),
     "amber_threshold_pd12": round(amber_thr, 4),
+    "month6_view": {
+        "n_on_book": int(len(m6)),
+        "rag_counts": m6["rag_m6"].value_counts().to_dict(),
+        "observed_next12m_default_rate_by_rag":
+            m6.groupby("rag_m6")["actual_default_12m_m6"].mean().round(4).to_dict(),
+    },
 }
 with open(APPDATA / "summary.json", "w") as fh:
     json.dump(summary, fh, indent=2)

@@ -48,6 +48,25 @@ st.caption("Predicts **WHEN** an account is likely to default — up to 12 month
            "CreditPulse flags and explains; the credit officer decides. "
            "(Demo portfolio: 5,000 real historical loans, scored blind on a hold-out year.)")
 
+view = st.radio(
+    "Scoring viewpoint",
+    ["At disbursal (new loan)", "At month 6 on book (running account)"],
+    horizontal=True)
+if view.startswith("At month 6"):
+    n_off = int((df["on_book_m6"] == 0).sum())
+    df = df[df["on_book_m6"] == 1].copy()
+    df["rag"] = df["rag_m6"]
+    df["pd_12m"] = df["pd6_m12"]
+    df["pd_6m"] = df["pd6_m6"]
+    for _m in range(1, 13):
+        df[f"pd_m{_m}"] = df[f"pd6_m{_m}"]
+    df["actual_default_12m"] = df["actual_default_12m_m6"]
+    st.info(f"**Running-account monitoring view** — the {n_off} accounts that stopped "
+            f"paying before month 6 have already left the book. The hazard model scores "
+            f"the {len(df):,} survivors over their **next 12 months** (book months 7–18), "
+            f"conditioned on having survived to month 6. Same model, no retraining — "
+            f"the discrete-time formulation makes mid-life scoring native.")
+
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Accounts monitored", f"{len(df):,}")
 k2.metric("🔴 Red (act now)", int((df.rag == "RED").sum()))
@@ -136,9 +155,9 @@ with tab2:
 
 # ------------------------------------------------------------------ TAB 3
 with tab3:
-    st.markdown("#### These 5,000 accounts are real historical loans (2015 vintage) "
+    st.markdown(f"#### These {len(df):,} accounts are real historical loans (2015 vintage) "
                 "scored **blind** — the model never saw their outcomes. Here is what actually happened:")
-    obs = summary["observed_12m_default_rate_by_rag"]
+    obs = df.groupby("rag")["actual_default_12m"].mean().to_dict()
     import altair as alt
     val = pd.DataFrame({
         "Bucket": ["RED", "AMBER", "GREEN"],

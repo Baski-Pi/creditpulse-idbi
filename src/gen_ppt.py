@@ -97,6 +97,7 @@ add_bullets(S[3], [
     ("Transparent EWS rule triggers (RBI-style) working alongside the ML score - officers can verify them by hand", 0, False),
     ("Blind-validation view: the dashboard proves its own buckets on historical outcomes", 0, False),
     ("Calibrated probabilities (predicted 14.6% vs observed 14.2% in the riskiest decile) - PDs officers can trust", 0, False),
+    ("Dual scoring viewpoint: at disbursal AND mid-life (month 6 on book) - true running-account monitoring; the hazard model scores any account age without retraining", 0, False),
     ("Segment-aware scoring (vintage, purpose, thin-history) feeding one unified score - as IDBI described", 0, False),
     ("Monthly re-scoring of the entire book; stability monitored per quarter", 0, False),
 ], size=15)
@@ -152,6 +153,7 @@ add_bullets(S[10], [
     ("Calibration: riskiest decile predicted 14.6% vs observed 14.2%; portfolio-level 239 expected defaults vs 246 actual (full decile table in Appendix B)", 1, False),
     ("AUC stable across all four quarters of the test year (production-readiness)", 1, False),
     ("RAG buckets validated blind: RED defaulted 11.0% / AMBER 7.7% / GREEN 3.3% (3.3x separation). RED+AMBER (~30% of book) captures 52% of all 12-month defaults at 2.5x lift - bucket sizes are a capacity dial the bank sets.", 0, True),
+    ("Running-account view validated separately: for accounts alive at month 6, RED defaulted 15.5% vs GREEN 5.1% over the NEXT 12 months (3.1x) - same model, scored mid-life.", 0, True),
     ("Median time from disbursal to payment cessation is 14 months - a 12-month advance warning is genuinely actionable.", 0, False),
     ("Fair-lending by design: protected attributes (gender, marital status) are excluded from all models.", 0, False),
 ], size=13)

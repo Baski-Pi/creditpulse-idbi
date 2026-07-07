@@ -11,5 +11,18 @@
     "RED": 0.1104
   },
   "red_threshold_pd12": 0.119,
-  "amber_threshold_pd12": 0.0743
+  "amber_threshold_pd12": 0.0743,
+  "month6_view": {
+    "n_on_book": 4601,
+    "rag_counts": {
+      "GREEN": 3236,
+      "AMBER": 953,
+      "RED": 412
+    },
+    "observed_next12m_default_rate_by_rag": {
+      "AMBER": 0.1091,
+      "GREEN": 0.0507,
+      "RED": 0.1553
+    }
+  }
 }
