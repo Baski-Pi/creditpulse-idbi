@@ -18,4 +18,4 @@ desktop.ini
 
 # PPT working files (submit as PDF via portal, keep template out of repo)
 docs/*.pptx
-docs
+docs/
