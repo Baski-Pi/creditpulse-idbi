@@ -32,14 +32,16 @@ ACTIONS = {
 
 
 @st.cache_data
-def load():
+def load(data_version: float):
+    # data_version (file mtime) is part of the cache key: whenever
+    # portfolio.parquet changes on deploy, the cache invalidates itself.
     df = pd.read_parquet(DATA / "portfolio.parquet")
     with open(DATA / "summary.json") as fh:
         summary = json.load(fh)
     return df, summary
 
 
-df, summary = load()
+df, summary = load((DATA / "portfolio.parquet").stat().st_mtime)
 
 # ------------------------------------------------------------------ header
 st.title("💓 CreditPulse — Default Risk Early-Warning System")
