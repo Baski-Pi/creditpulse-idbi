@@ -157,10 +157,13 @@ elif section == SECTIONS[1]:
         reasons = json.loads(row.reasons)
         rules = json.loads(row.rule_flags)
         if row.rag == "GREEN":
+            rel = row.pd_12m / df.pd_12m.mean()
+            level = ("LOW" if rel <= 1.0
+                     else "within the GREEN range (upper end — periodic review is enough)")
             st.markdown("**Risk notes** *(account is healthy — for awareness, not action)*:")
-            st.markdown(f"- ✅ Overall risk is LOW ({row.pd_12m:.1%} over 12 months). "
-                        "Items below are this account's *relatively* weakest points, "
-                        "not warnings.")
+            st.markdown(f"- ✅ Overall risk is {level}: {row.pd_12m:.1%} over 12 months "
+                        f"({rel:.1f}× portfolio average). Items below are this account's "
+                        "*relatively* weakest points, not warnings.")
         else:
             st.markdown("**Why this account is flagged (reason codes):**")
         for r in reasons:
