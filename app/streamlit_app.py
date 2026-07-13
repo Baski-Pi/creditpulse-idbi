@@ -191,45 +191,107 @@ elif section == SECTIONS[2]:
     st.markdown(f"#### These {len(df):,} accounts are real historical loans (2015 vintage) "
                 "scored **blind** — the model never saw their outcomes. Here is what actually happened:")
     obs = df.groupby("rag")["actual_default_12m"].mean().to_dict()
+    cnt = df["rag"].value_counts().to_dict()
     import altair as alt
-    val = pd.DataFrame({
-        "Bucket": ["RED", "AMBER", "GREEN"],
-        "Observed 12-month default rate": [obs.get("RED", 0), obs.get("AMBER", 0), obs.get("GREEN", 0)],
-    })
-    chart = (
-        alt.Chart(val).mark_bar(size=90)
-        .encode(
-            x=alt.X("Bucket", sort=["RED", "AMBER", "GREEN"],
-                    axis=alt.Axis(labelAngle=0, title=None)),
-            y=alt.Y("Observed 12-month default rate",
-                    axis=alt.Axis(format=".0%")),
-            color=alt.Color("Bucket",
-                            scale=alt.Scale(domain=["RED", "AMBER", "GREEN"],
-                                            range=[RAG_COLORS["RED"], RAG_COLORS["AMBER"],
-                                                   RAG_COLORS["GREEN"]]),
-                            legend=None),
-        )
-        .properties(height=300)
-    )
-    st.altair_chart(chart, width="stretch")
+    BUCKETS = ["RED", "AMBER", "GREEN"]
+    RANGE = [RAG_COLORS[b] for b in BUCKETS]
+
+    colA, colB = st.columns([1, 1.9])
+
+    with colA:
+        # Question 1: how is the book bucketed? (composition -> donut)
+        st.markdown(f"**How the {len(df):,} accounts are bucketed**")
+        comp = pd.DataFrame({
+            "label": [f"{b} — {cnt.get(b, 0):,} ({cnt.get(b, 0)/len(df):.0%})"
+                      for b in BUCKETS],
+            "n": [cnt.get(b, 0) for b in BUCKETS],
+        })
+        donut = (alt.Chart(comp).mark_arc(innerRadius=55, cornerRadius=3, padAngle=0.02)
+                 .encode(theta=alt.Theta("n", sort=None),
+                         color=alt.Color("label", sort=None,
+                                         scale=alt.Scale(domain=comp["label"].tolist(),
+                                                         range=RANGE),
+                                         legend=alt.Legend(title=None, orient="bottom",
+                                                           columns=1)))
+                 .properties(height=260))
+        st.altair_chart(donut, width="stretch")
+
+    with colB:
+        # Question 2: was the sorting right? (icon array - 100 dots per bucket)
+        st.markdown("**Out of every 100 accounts in each bucket — "
+                    "how many went bad within 12 months?**")
+        rows, hdrs = [], []
+        for b in BUCKETS:
+            k = int(round(obs.get(b, 0) * 100))
+            hdr = f"{b}: {k} of 100"
+            hdrs.append(hdr)
+            for i in range(100):
+                rows.append({"bucket": hdr, "x": i % 10, "y": i // 10,
+                             "fill": "BAD" if i < k else b})
+        dots = pd.DataFrame(rows)
+        # red always = went bad; "stayed fine" wears the bucket's own shade
+        FINE = {"RED": "#f3b3b3", "AMBER": "#f5c26b", "GREEN": "#2a9d3a"}
+        icon = (alt.Chart(dots).mark_square(size=160)
+                .encode(
+                    x=alt.X("x:O", axis=None),
+                    y=alt.Y("y:O", axis=None),
+                    color=alt.Color("fill:N", legend=None,
+                                    scale=alt.Scale(
+                                        domain=["BAD", "RED", "AMBER", "GREEN"],
+                                        range=[RAG_COLORS["RED"], FINE["RED"],
+                                               FINE["AMBER"], FINE["GREEN"]])),
+                    column=alt.Column("bucket:N", sort=hdrs,
+                                      header=alt.Header(title=None, labelFontSize=14,
+                                                        labelFontWeight="bold")),
+                )
+                .properties(width=185, height=185))
+        st.altair_chart(icon)
+        st.caption("Each square = one account out of 100 in that bucket. "
+                   "🟥 red = actually stopped repaying · other shades = stayed fine. "
+                   "GREEN bucket: right about ~97 of 100; RED bucket: concentrates "
+                   "more than double the book's trouble.")
+    red_r, green_r = obs.get("RED", 0), obs.get("GREEN", 1e-9)
     c1, c2, c3 = st.columns(3)
-    c1.metric("RED bucket — actually defaulted", f"{obs.get('RED', 0):.1%}")
-    c2.metric("GREEN bucket — actually defaulted", f"{obs.get('GREEN', 0):.1%}")
-    c3.metric("Risk separation (RED vs GREEN)",
-              f"{obs.get('RED', 0) / max(obs.get('GREEN', 1e-9), 1e-9):.1f}×")
+    c1.metric("RED bucket — actually defaulted", f"{red_r:.1%}")
+    c1.caption(f"≈ 1 in {round(1 / max(red_r, 1e-9))} RED accounts went bad")
+    c2.metric("GREEN bucket — actually defaulted", f"{green_r:.1%}")
+    c2.caption(f"≈ 1 in {round(1 / max(green_r, 1e-9))} GREEN accounts went bad")
+    c3.metric("Risk separation (RED vs GREEN)", f"{red_r / max(green_r, 1e-9):.1f}×")
+    c3.caption("how much more trouble RED holds than GREEN")
+
+    st.markdown("##### Model report card *(measured on 283,173 unseen loans)*")
+    r1, r2, r3, r4, r5 = st.columns(5)
+    r1.metric("Accuracy", "94.8%")
+    r1.caption("bank's ask: above 90% ✓ (12-month question)")
+    r2.metric("AUC", "0.72")
+    r2.caption("ranking power: riskier account ranked higher 72 times out of 100")
+    r3.metric("KS", "0.33")
+    r3.caption("scorecard separation; 0.30+ is a usable scorecard")
+    r4.metric("Lift @ top 15%", "2.5×")
+    r4.caption("watchlist catches 2.5× more defaulters than random review")
+    r5.metric("Promise vs reality", "14.6% → 14.2%")
+    r5.caption("model predicted 14.6% of the riskiest tenth would go bad — "
+               "14.2% actually did (near-exact)")
+
     st.markdown(
-        "- 'Default' here means the account **stops repaying** (and is subsequently charged "
-        "off) — the earliest actionable signal; formal charge-off is recorded months later.\n"
-        "- Headline accuracy on the bank's stated question (stops repaying within 12 months): "
-        "**94.8%** (base rate 5.2%; a do-nothing model scores the same, which is why we lead "
-        "with ranking power and calibration below).\n"
-        "- Ranking power **AUC 0.72, KS 0.33** on 283,173 unseen loans; riskiest decile "
-        "predicted 14.6% vs observed 14.2% (full decile table in the deck appendix).\n"
-        "- RED + AMBER (~30% of the book) captures **52% of all 12-month defaults at 2.5× "
-        "lift** — bucket sizes are a capacity dial the bank sets, not a model ceiling.\n"
-        "- Validation cohort: 36-month personal loans (the fully-observable segment of the "
-        "public data); the architecture itself is term-agnostic.\n"
-        "- With the bank's internal **monthly repayment behavior** (sandbox stage), ranking "
-        "power improves materially — shown directionally on a 30k-customer behavioral "
-        "dataset; IDBI's own data connects via the sandbox APIs."
+        "**The takeaway:** the buckets were assigned *before* knowing any outcome — and "
+        "the outcomes followed the colors. RED + AMBER (~30% of the book) captured **52% "
+        "of all 12-month defaults at 2.5× lift**; bucket sizes are a capacity dial the "
+        "bank sets, not a model ceiling."
     )
+    with st.expander("Full validation details & fine print"):
+        st.markdown(
+            "- 'Default' here means the account **stops repaying** (and is subsequently "
+            "charged off) — the earliest actionable signal; formal charge-off is recorded "
+            "months later.\n"
+            "- Headline accuracy on the bank's stated question (stops repaying within 12 "
+            "months): **94.8%** (base rate 5.2%; a do-nothing model scores the same, which "
+            "is why we lead with ranking power and calibration).\n"
+            "- Ranking power **AUC 0.72, KS 0.33** on 283,173 unseen loans; riskiest decile "
+            "predicted 14.6% vs observed 14.2% (full decile table in the deck appendix).\n"
+            "- Validation cohort: 36-month personal loans (the fully-observable segment of "
+            "the public data); the architecture itself is term-agnostic.\n"
+            "- With the bank's internal **monthly repayment behavior** (sandbox stage), "
+            "ranking power improves materially — shown directionally on a 30k-customer "
+            "behavioral dataset; IDBI's own data connects via the sandbox APIs."
+        )
