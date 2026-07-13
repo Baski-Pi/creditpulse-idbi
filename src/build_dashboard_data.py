@@ -120,7 +120,8 @@ REASON = {
     "term_months": "Longer loan tenor increases exposure",
     "loan_amnt": "Large loan size",
     "installment": "High installment amount",
-    "month_on_book": "Loan is in its highest-risk seasoning period",
+    # "month_on_book" intentionally NOT mapped: loan age is the same for every
+    # account at scoring time, so it is generic noise, not an account-specific reason.
     "purpose": "Loan purpose carries elevated risk",
     "home_ownership": "Housing status adds risk",
     "util_x_delinq": "High utilization combined with past delinquency",

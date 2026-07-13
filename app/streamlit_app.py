@@ -122,8 +122,17 @@ if section == SECTIONS[0]:
 
 # ------------------------------------------------------------------ SECTION 2
 elif section == SECTIONS[1]:
-    risky_first = df.sort_values("pd_12m", ascending=False)["account_id"].tolist()
-    acc = st.selectbox("Select account", risky_first, index=0, key="account_pick")
+    # Progressive filtering: pick a bucket first so the account list stays
+    # small and fast (officers work a queue, not the whole book).
+    fc1, fc2 = st.columns([1, 3])
+    bucket_pick = fc1.selectbox("Risk bucket", ["RED", "AMBER", "GREEN", "ALL"],
+                                index=0, key="bucket_pick")
+    pool = df if bucket_pick == "ALL" else df[df.rag == bucket_pick]
+    MAX_LIST = 300
+    listed = pool.sort_values("pd_12m", ascending=False)["account_id"].tolist()[:MAX_LIST]
+    acc = fc2.selectbox(
+        f"Select account — {len(listed)} of {len(pool):,} shown, riskiest first",
+        listed, index=0, key="account_pick")
     row = df[df.account_id == acc].iloc[0]
     log.info("view=%s | account=%s | rag=%s | pd12=%.3f",
              view, acc, row.rag, row.pd_12m)
@@ -145,15 +154,21 @@ elif section == SECTIONS[1]:
         }).set_index("Month ahead")
         st.line_chart(curve, height=260)
 
-        st.markdown("**Why this account is flagged (reason codes):**")
         reasons = json.loads(row.reasons)
         rules = json.loads(row.rule_flags)
+        if row.rag == "GREEN":
+            st.markdown("**Risk notes** *(account is healthy — for awareness, not action)*:")
+            st.markdown(f"- ✅ Overall risk is LOW ({row.pd_12m:.1%} over 12 months). "
+                        "Items below are this account's *relatively* weakest points, "
+                        "not warnings.")
+        else:
+            st.markdown("**Why this account is flagged (reason codes):**")
         for r in reasons:
             st.markdown(f"- 🧠 *Model:* {r}")
         for r in rules:
             st.markdown(f"- 📏 *EWS rule:* {r}")
         if not reasons and not rules:
-            st.markdown("- No adverse signals — account is healthy.")
+            st.markdown("- ✅ No adverse signals at all — clean profile.")
 
     with right:
         st.markdown("### Account profile")
