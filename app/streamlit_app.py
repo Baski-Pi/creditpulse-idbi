@@ -5,11 +5,15 @@ IDBI Innovate 2026 | Track 4: Default Prediction Model | Team Credit Pulse
 Run locally:  .venv\\Scripts\\streamlit.exe run app\\streamlit_app.py
 """
 import json
+import logging
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("creditpulse")
 
 st.set_page_config(page_title="CreditPulse — Early Warning System",
                    page_icon="💓", layout="wide")
@@ -53,7 +57,7 @@ st.caption("Predicts **WHEN** an account is likely to default — up to 12 month
 view = st.radio(
     "Scoring viewpoint",
     ["At disbursal (new loan)", "At month 6 on book (running account)"],
-    horizontal=True)
+    horizontal=True, key="viewpoint")
 if view.startswith("At month 6"):
     n_off = int((df["on_book_m6"] == 0).sum())
     df = df[df["on_book_m6"] == 1].copy()
@@ -76,10 +80,17 @@ k3.metric("🟡 Amber (watch)", int((df.rag == "AMBER").sum()))
 k4.metric("Expected 12-mo defaults", int(df.pd_12m.sum().round()))
 k5.metric("Portfolio avg PD (12m)", f"{df.pd_12m.mean():.1%}")
 
-tab1, tab2, tab3 = st.tabs(["📋 Portfolio Watchlist", "👤 Account 360°", "✅ Proof: Model Validation"])
+# Single-section navigation (segmented control) instead of st.tabs:
+# only ONE section renders per rerun, which structurally prevents the
+# known st.tabs glitch where panels bleed content into each other.
+SECTIONS = ["📋 Portfolio Watchlist", "👤 Account 360°", "✅ Proof: Model Validation"]
+section = st.segmented_control("Section", SECTIONS, default=SECTIONS[0],
+                               key="section", label_visibility="collapsed")
+section = section or SECTIONS[0]
+log.info("section=%s | view=%s", section, view)
 
-# ------------------------------------------------------------------ TAB 1
-with tab1:
+# ------------------------------------------------------------------ SECTION 1
+if section == SECTIONS[0]:
     c1, c2, c3 = st.columns([1, 1, 2])
     rag_f = c1.multiselect("Risk bucket", ["RED", "AMBER", "GREEN"], default=["RED", "AMBER"])
     grade_f = c2.multiselect("Internal grade", sorted(df.grade.unique()))
@@ -109,11 +120,13 @@ with tab1:
     st.caption(f"{len(view):,} accounts in view — sorted by 12-month default probability. "
                "EWS rule triggers follow RBI Early-Warning-Signal style indicators.")
 
-# ------------------------------------------------------------------ TAB 2
-with tab2:
+# ------------------------------------------------------------------ SECTION 2
+elif section == SECTIONS[1]:
     risky_first = df.sort_values("pd_12m", ascending=False)["account_id"].tolist()
-    acc = st.selectbox("Select account", risky_first, index=0)
+    acc = st.selectbox("Select account", risky_first, index=0, key="account_pick")
     row = df[df.account_id == acc].iloc[0]
+    log.info("view=%s | account=%s | rag=%s | pd12=%.3f",
+             view, acc, row.rag, row.pd_12m)
 
     left, right = st.columns([1.15, 1])
     with left:
@@ -155,8 +168,8 @@ with tab2:
         for a in ACTIONS[row.rag]:
             st.checkbox(a, key=f"{acc}-{a}")
 
-# ------------------------------------------------------------------ TAB 3
-with tab3:
+# ------------------------------------------------------------------ SECTION 3
+elif section == SECTIONS[2]:
     st.markdown(f"#### These {len(df):,} accounts are real historical loans (2015 vintage) "
                 "scored **blind** — the model never saw their outcomes. Here is what actually happened:")
     obs = df.groupby("rag")["actual_default_12m"].mean().to_dict()

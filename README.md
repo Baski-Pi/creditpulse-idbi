@@ -6,6 +6,9 @@ CreditPulse predicts **not just IF a loan account will default, but WHEN** — u
 months in advance — and explains every alert in plain language, keeping the credit
 officer in charge of the decision.
 
+📘 **Full technical documentation:** [DOCUMENTATION.md](DOCUMENTATION.md) ·
+📓 **Executed end-to-end walkthrough:** [notebooks/creditpulse_walkthrough.ipynb](notebooks/creditpulse_walkthrough.ipynb)
+
 ## The problem (IDBI's ask)
 
 > "Predict default 12 months in advance for running loan accounts, with accuracy

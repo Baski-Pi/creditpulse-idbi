@@ -19,3 +19,8 @@ desktop.ini
 # PPT working files (submit as PDF via portal, keep template out of repo)
 docs-/*.pptx
 docs-/
+
+# competition packaging tools - local only, not part of the product
+src/gen_ppt.py
+src/gen_diagrams.py
+.devcontainer/
